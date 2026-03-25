@@ -1,0 +1,48 @@
+name: Weekly Climate Finance Digest
+
+# ── When does it run? ──────────────────────────────────────────
+on:
+  schedule:
+    # Every Monday at 8:00 AM Paris time (UTC+2 in summer, UTC+1 in winter)
+    # Using 6:00 UTC to cover both (will be 7am or 8am Paris time)
+    - cron: '0 6 * * 1'
+  
+  # Also allow manual trigger from the GitHub UI (Actions tab → Run workflow)
+  workflow_dispatch:
+
+# ── What does it do? ───────────────────────────────────────────
+jobs:
+  generate-digest:
+    runs-on: ubuntu-latest
+    
+    steps:
+      # 1. Check out your repository code
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 2. Set up Python
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      # 3. Install dependencies
+      - name: Install dependencies
+        run: pip install anthropic feedparser requests
+
+      # 4. Run the script
+      - name: Generate weekly digest
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          LOOKBACK_DAYS: "10"
+          OUTPUT_DIR: "digests"
+        run: python climate_research_weekly.py
+
+      # 5. Commit the new digest file back to the repository
+      - name: Commit digest to repo
+        run: |
+          git config user.name "Climate Monitor Bot"
+          git config user.email "bot@users.noreply.github.com"
+          git add digests/
+          git diff --staged --quiet || git commit -m "📊 Weekly climate finance digest $(date +%Y-%m-%d)"
+          git push
